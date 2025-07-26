@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>T-Shirt Mockup Editor</title>
+  <title>T-Shirt Mockup Front & Back</title>
 
-  <!-- jQuery + jQuery UI -->
+  <!-- jQuery & jQuery UI -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
@@ -15,10 +15,19 @@
       padding: 20px;
     }
 
+    .view-buttons {
+      margin-bottom: 10px;
+    }
+
+    .view-buttons button {
+      padding: 10px;
+      margin-right: 10px;
+    }
+
     .mockup-container {
       position: relative;
       width: 400px;
-      margin-top: 20px;
+      margin-top: 10px;
     }
 
     .tshirt {
@@ -35,13 +44,11 @@
       border: 2px dashed #444;
       cursor: move;
       transform-origin: center center;
-      background: transparent;
     }
 
     .design-box img {
       width: 100%;
       height: auto;
-      display: block;
       pointer-events: none;
     }
 
@@ -55,80 +62,101 @@
       left: 50%;
       transform: translateX(-50%);
       cursor: grab;
-      z-index: 10;
     }
 
-    input[type="file"] {
-      margin-bottom: 20px;
+    .upload-input {
+      margin: 10px 0;
+    }
+
+    .side-view {
+      display: none;
+    }
+
+    .side-view.active {
+      display: block;
     }
   </style>
 </head>
 <body>
 
-  <h2>Upload your design</h2>
-  <input type="file" id="upload" accept="image/*" />
+  <h2>Upload Designs for Front and Back</h2>
 
-  <div class="mockup-container">
-    <img src="./tshirt.png" class="tshirt" alt="T-shirt mockup" />
+  <div class="view-buttons">
+    <button id="frontBtn">Front View</button>
+    <button id="backBtn">Back View</button>
+  </div>
 
-    <div id="design-box" class="design-box">
-      <div class="rotate-handle"></div>
-      <img id="design-img" src="" alt="Your Design" />
+  <!-- Front Side View -->
+  <div id="frontView" class="side-view active">
+    <input type="file" id="uploadFront" class="upload-input" accept="image/*" />
+    <div class="mockup-container">
+      <img src="./tshirt.png" class="tshirt" alt="Front T-shirt" />
+      <div id="designBoxFront" class="design-box">
+        <div class="rotate-handle"></div>
+        <img id="designImgFront" src="" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Back Side View -->
+  <div id="backView" class="side-view">
+    <input type="file" id="uploadBack" class="upload-input" accept="image/*" />
+    <div class="mockup-container">
+      <img src="./tshirtbackside.png" class="tshirt" alt="Back T-shirt" />
+      <div id="designBoxBack" class="design-box">
+        <div class="rotate-handle"></div>
+        <img id="designImgBack" src="" />
+      </div>
     </div>
   </div>
 
   <script>
-    $(function () {
-      const $box = $('#design-box');
+    function setupDesignBox(uploadId, boxId, imgId) {
+      const $upload = $(uploadId);
+      const $box = $(boxId);
+      const $img = $(imgId);
+      const $handle = $box.find('.rotate-handle');
 
-      $('#upload').on('change', function (e) {
+      $upload.on('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = function (event) {
-          $('#design-img').attr('src', event.target.result);
+          $img.attr('src', event.target.result);
           $box.show();
         };
         reader.readAsDataURL(file);
       });
 
-      $box.draggable({
-        containment: '.mockup-container'
-      }).resizable({
+      $box.draggable({ containment: "parent" }).resizable({
         aspectRatio: true,
-        containment: '.mockup-container'
+        containment: "parent"
       });
 
       let isRotating = false;
-      let center = {};
-      let startAngle = 0;
+      let center = {}, startAngle = 0;
 
-      const getAngle = (center, point) => {
-        return Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
-      };
+      const getAngle = (center, point) =>
+        Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
 
-      $('.rotate-handle').on('mousedown', function (e) {
+      $handle.on('mousedown', function (e) {
         e.preventDefault();
         isRotating = true;
 
         const offset = $box.offset();
-        const width = $box.width();
-        const height = $box.height();
         center = {
-          x: offset.left + width / 2,
-          y: offset.top + height / 2
+          x: offset.left + $box.width() / 2,
+          y: offset.top + $box.height() / 2
         };
-
         startAngle = getAngle(center, { x: e.pageX, y: e.pageY }) - ($box.data('angle') || 0);
       });
 
       $(document).on('mousemove', function (e) {
         if (!isRotating) return;
 
-        const currentAngle = getAngle(center, { x: e.pageX, y: e.pageY });
-        const rotate = currentAngle - startAngle;
-
+        const current = getAngle(center, { x: e.pageX, y: e.pageY });
+        const rotate = current - startAngle;
         $box.css('transform', 'rotate(' + rotate + 'deg)');
         $box.data('angle', rotate);
       });
@@ -136,6 +164,21 @@
       $(document).on('mouseup', function () {
         isRotating = false;
       });
+    }
+
+    // Setup for front and back
+    setupDesignBox('#uploadFront', '#designBoxFront', '#designImgFront');
+    setupDesignBox('#uploadBack', '#designBoxBack', '#designImgBack');
+
+    // View toggle buttons
+    $('#frontBtn').click(() => {
+      $('#frontView').addClass('active');
+      $('#backView').removeClass('active');
+    });
+
+    $('#backBtn').click(() => {
+      $('#backView').addClass('active');
+      $('#frontView').removeClass('active');
     });
   </script>
 
