@@ -8,6 +8,7 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     body {
@@ -75,6 +76,11 @@
     .side-view.active {
       display: block;
     }
+
+    #combinedCanvasPreview {
+      display: none;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -84,12 +90,13 @@
   <div class="view-buttons">
     <button id="frontBtn">Front View</button>
     <button id="backBtn">Back View</button>
+    <button onclick="downloadBoth()">Download Both Designs</button>
   </div>
 
   <!-- Front Side View -->
   <div id="frontView" class="side-view active">
     <input type="file" id="uploadFront" class="upload-input" accept="image/*" />
-    <div class="mockup-container">
+    <div class="mockup-container" id="frontMockup">
       <img src="./tshirt.png" class="tshirt" alt="Front T-shirt" />
       <div id="designBoxFront" class="design-box">
         <div class="rotate-handle"></div>
@@ -101,7 +108,7 @@
   <!-- Back Side View -->
   <div id="backView" class="side-view">
     <input type="file" id="uploadBack" class="upload-input" accept="image/*" />
-    <div class="mockup-container">
+    <div class="mockup-container" id="backMockup">
       <img src="./tshirtbackside.png" class="tshirt" alt="Back T-shirt" />
       <div id="designBoxBack" class="design-box">
         <div class="rotate-handle"></div>
@@ -109,6 +116,8 @@
       </div>
     </div>
   </div>
+
+  <canvas id="combinedCanvasPreview"></canvas>
 
   <script>
     function setupDesignBox(uploadId, boxId, imgId) {
@@ -124,6 +133,7 @@
         const reader = new FileReader();
         reader.onload = function (event) {
           $img.attr('src', event.target.result);
+          $box.css('transform', 'rotate(0deg)').data('angle', 0);
           $box.show();
         };
         reader.readAsDataURL(file);
@@ -166,11 +176,9 @@
       });
     }
 
-    // Setup for front and back
     setupDesignBox('#uploadFront', '#designBoxFront', '#designImgFront');
     setupDesignBox('#uploadBack', '#designBoxBack', '#designImgBack');
 
-    // View toggle buttons
     $('#frontBtn').click(() => {
       $('#frontView').addClass('active');
       $('#backView').removeClass('active');
@@ -180,7 +188,36 @@
       $('#backView').addClass('active');
       $('#frontView').removeClass('active');
     });
-  </script>
 
+    function downloadBoth() {
+      const frontEl = document.querySelector("#frontMockup");
+      const backEl = document.querySelector("#backMockup");
+
+      Promise.all([
+        html2canvas(frontEl, { backgroundColor: null, useCORS: true }),
+        html2canvas(backEl, { backgroundColor: null, useCORS: true })
+      ]).then(([frontCanvas, backCanvas]) => {
+        const width = Math.max(frontCanvas.width, backCanvas.width);
+        const totalHeight = frontCanvas.height + backCanvas.height;
+
+        const combinedCanvas = document.createElement("canvas");
+        combinedCanvas.width = width;
+        combinedCanvas.height = totalHeight;
+
+        const ctx = combinedCanvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, width, totalHeight);
+        ctx.drawImage(frontCanvas, 0, 0);
+        ctx.drawImage(backCanvas, 0, frontCanvas.height);
+
+        combinedCanvas.toBlob(function(blob) {
+          const link = document.createElement("a");
+          link.download = "tshirt-front-and-back.png";
+          link.href = URL.createObjectURL(blob);
+          link.click();
+        }, 'image/png');
+      });
+    }
+  </script>
 </body>
 </html>
