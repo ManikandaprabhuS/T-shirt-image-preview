@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>T-Shirt Mockup</title>
+  <meta charset="UTF-8">
+  <title>T-Shirt Mockup Editor</title>
+
+  <!-- jQuery + jQuery UI -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+
   <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
     .mockup-container {
       position: relative;
       width: 400px;
@@ -14,46 +26,116 @@
       display: block;
     }
 
-    .design {
+    .design-box {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      top: 100px;
+      left: 100px;
       width: 200px;
       display: none;
-      z-index: 2;
+      border: 2px dashed #444;
+      cursor: move;
+      transform-origin: center center;
+      background: transparent;
+    }
+
+    .design-box img {
+      width: 100%;
+      height: auto;
+      display: block;
       pointer-events: none;
-      mix-blend-mode: multiply;
-      opacity: 0.95;
+    }
+
+    .rotate-handle {
+      width: 16px;
+      height: 16px;
+      background: red;
+      border-radius: 50%;
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: grab;
+      z-index: 10;
     }
 
     input[type="file"] {
-      margin-top: 20px;
+      margin-bottom: 20px;
     }
   </style>
-</head>                                     
+</head>
 <body>
 
   <h2>Upload your design</h2>
   <input type="file" id="upload" accept="image/*" />
 
   <div class="mockup-container">
-    <img src="./tshirt2.png" class="tshirt" />
-    <img id="design-preview" class="design" />
+    <img src="./tshirt.png" class="tshirt" alt="T-shirt mockup" />
+
+    <div id="design-box" class="design-box">
+      <div class="rotate-handle"></div>
+      <img id="design-img" src="" alt="Your Design" />
+    </div>
   </div>
 
   <script>
-    document.getElementById('upload').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
+    $(function () {
+      const $box = $('#design-box');
 
-      reader.onload = function(event) {
-        const design = document.getElementById('design-preview');
-        design.src = event.target.result;
-        design.style.display = 'block';
+      $('#upload').on('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          $('#design-img').attr('src', event.target.result);
+          $box.show();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      $box.draggable({
+        containment: '.mockup-container'
+      }).resizable({
+        aspectRatio: true,
+        containment: '.mockup-container'
+      });
+
+      let isRotating = false;
+      let center = {};
+      let startAngle = 0;
+
+      const getAngle = (center, point) => {
+        return Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
       };
 
-      if (file) reader.readAsDataURL(file);
+      $('.rotate-handle').on('mousedown', function (e) {
+        e.preventDefault();
+        isRotating = true;
+
+        const offset = $box.offset();
+        const width = $box.width();
+        const height = $box.height();
+        center = {
+          x: offset.left + width / 2,
+          y: offset.top + height / 2
+        };
+
+        startAngle = getAngle(center, { x: e.pageX, y: e.pageY }) - ($box.data('angle') || 0);
+      });
+
+      $(document).on('mousemove', function (e) {
+        if (!isRotating) return;
+
+        const currentAngle = getAngle(center, { x: e.pageX, y: e.pageY });
+        const rotate = currentAngle - startAngle;
+
+        $box.css('transform', 'rotate(' + rotate + 'deg)');
+        $box.data('angle', rotate);
+      });
+
+      $(document).on('mouseup', function () {
+        isRotating = false;
+      });
     });
   </script>
 
